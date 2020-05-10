@@ -19,6 +19,7 @@ type Stager interface{
 	WriteProfileD(string, string) error
 	CacheDir() string
 	DepDir() string
+	BuildDir() string
 }
 
 type Command interface {
