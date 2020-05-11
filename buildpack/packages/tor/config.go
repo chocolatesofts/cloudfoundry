@@ -7,7 +7,7 @@ import (
 	"github.com/cloudfoundry/libbuildpack"
 )
 
-const configfilename="tor.yml"
+const configfilename="tor*.yml"
 type ConfigYML struct{
 	Ports	[]struct{
 		SockPort    string `yaml:"sockport"`
@@ -24,6 +24,7 @@ type ConfigPort struct{
 	ControlPort		int
 	Pass 			string
 	Config 			string
+	Datadir 		string
 }
 func determinePort(Port string) []int {
 	if(strings.Contains(Port,"..")){
@@ -71,7 +72,7 @@ func determinePort(Port string) []int {
 	}
 
 }
-func parseConfig(file string) (configs []ConfigPort,err error){
+func ParseConfig(file string) (configs []ConfigPort,err error){
 	cml:= &ConfigYML{}
 	libbuildpack.NewYAML().Load(file,cml)
 	pnum:=0
@@ -106,6 +107,7 @@ func parseConfig(file string) (configs []ConfigPort,err error){
 			if((len(sport)==1 && (portset.Config==""))|| (len(sport)>1)){
 				panic(fmt.Errorf("insufficient control ports"))
 			}
+			fmt.Printf("in port config index: %v\nexplicit control port not set. Not checking for port conflict\n",pnum)
 		} else{
 			ptype= "controlport"
 			cport=determinePort(portset.ControlPort)
@@ -128,10 +130,27 @@ func parseConfig(file string) (configs []ConfigPort,err error){
 			if(len(cport)>num){
 				tcport=cport[num]
 			}	
-			portconfigs=append(portconfigs,ConfigPort{sport[num],tcport,cpass,conf})
+			portconfigs=append(portconfigs,ConfigPort{sport[num],tcport,cpass,conf,""})
 		}
 	}
 	configs = portconfigs
 	err = nil
 	return
 }
+func (conp *ConfigPort) getCommand() string{
+	basecomm:= "mkdir -p "+conp.Datadir
+	if(conp.Pass!=""){
+		basecomm=basecomm+"\ntorpass=$(tor --hash-password \""+conp.Pass+"\")"
+	}
+	basecomm=basecomm+"\nnohup tor "
+	if(conp.Config!=""){
+		basecomm=basecomm+"-f "+conp.Config+" "
+	}
+	basecomm=basecomm+"SOCKSPort "+strconv.Itoa(conp.SockPort)+" CONTROLPort "+strconv.Itoa(conp.ControlPort)
+	if(conp.Pass!=""){
+		basecomm=basecomm+" HashedControlPassword $torpass"
+	}
+	basecomm=basecomm+" DATADirectory "+conp.Datadir+" &"
+	return basecomm
+}
+

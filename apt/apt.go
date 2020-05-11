@@ -12,7 +12,7 @@ import (
 )
 
 const(
-	aptname = "apt"
+	Aptname = "apt"
 )
 type Stager interface{
 	LinkDirectoryInDepDir(string, string) error
@@ -170,6 +170,6 @@ func LinkPackages(s *Supplier,installDir string) error {
 }
 
 func InstallDir(s *Supplier,pkg string)string{
-	installDir := filepath.Join(s.Stager.DepDir(),aptname,pkg)
+	installDir := filepath.Join(s.Stager.DepDir(),Aptname,pkg)
 	return installDir
 }
